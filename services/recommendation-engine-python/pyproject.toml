@@ -1,0 +1,30 @@
+[project]
+name = "recommendation-engine"
+version = "0.1.0"
+description = "Motor de recomendação: candidatos, features, ranking, diversidade e workers de eventos"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "fastapi>=0.115,<1",
+    "uvicorn[standard]>=0.32,<1",
+    "redis[hiredis]>=5.2,<7",
+    "psycopg[binary]>=3.2,<4",
+    "psycopg-pool>=3.2,<4",
+    "prometheus-client>=0.21,<1",
+    "orjson>=3.10,<4",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3,<10",
+    "jsonschema>=4.23,<5",
+    "httpx>=0.28,<1",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "integration: requer Redis e PostgreSQL reais (REDIS_URL e DATABASE_URL)",
+]
