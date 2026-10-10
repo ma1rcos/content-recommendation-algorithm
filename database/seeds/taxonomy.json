@@ -1,0 +1,21 @@
+{
+  "categories": [
+    {"slug": "games", "name": "Games", "tags": ["rpg", "fps", "indie", "esports", "retro", "speedrun"]},
+    {"slug": "tecnologia", "name": "Tecnologia", "tags": ["programacao", "ia", "hardware", "smartphones", "seguranca", "open-source"]},
+    {"slug": "culinaria", "name": "Culinária", "tags": ["receitas", "confeitaria", "vegano", "churrasco", "comida-de-rua", "cafe"]},
+    {"slug": "viagem", "name": "Viagem", "tags": ["mochilao", "praias", "montanhas", "intercambio", "roteiros", "hospedagem"]},
+    {"slug": "musica", "name": "Música", "tags": ["rock", "mpb", "samba", "eletronica", "rap", "instrumentos"]},
+    {"slug": "esportes", "name": "Esportes", "tags": ["futebol", "corrida", "basquete", "skate", "lutas", "ciclismo"]},
+    {"slug": "ciencia", "name": "Ciência", "tags": ["astronomia", "biologia", "fisica", "matematica", "clima", "saude"]},
+    {"slug": "moda", "name": "Moda", "tags": ["streetwear", "brecho", "sustentavel", "acessorios", "tendencias", "costura"]},
+    {"slug": "humor", "name": "Humor", "tags": ["memes", "standup", "esquetes", "parodia", "tirinhas", "improviso"]},
+    {"slug": "financas", "name": "Finanças", "tags": ["investimentos", "economia", "orcamento", "cripto", "empreendedorismo", "carreira"]},
+    {"slug": "pets", "name": "Pets", "tags": ["cachorros", "gatos", "adocao", "adestramento", "aves", "aquarismo"]},
+    {"slug": "arte", "name": "Arte", "tags": ["ilustracao", "fotografia", "pintura", "escultura", "cinema", "design"]}
+  ],
+  "generic_tags": ["tutorial", "review", "dicas", "bastidores", "ao-vivo", "iniciantes", "curiosidades", "noticias"],
+  "title_words": {
+    "adjectives": ["incrível", "rápido", "definitivo", "simples", "surpreendente", "essencial", "polêmico", "barato", "secreto", "clássico"],
+    "nouns": ["guia", "desafio", "experimento", "ranking", "segredo", "erro", "truque", "história", "comparativo", "teste"]
+  }
+}
