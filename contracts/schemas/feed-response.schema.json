@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "feed-response.schema.json",
+  "title": "Resposta pública de GET /v1/feed/{user_id}",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["user_id", "items", "next_cursor", "source", "feed_version", "stale"],
+  "properties": {
+    "user_id": {"type": "integer", "minimum": 1},
+    "source": {"enum": ["cache", "cache_stale", "built", "fallback_trending", "fallback_recent"]},
+    "feed_version": {"type": ["integer", "null"]},
+    "stale": {"type": "boolean"},
+    "next_cursor": {"type": ["string", "null"]},
+    "items": {
+      "type": "array",
+      "maxItems": 50,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["content_id", "position", "author_id", "category", "tags", "title", "published_at", "score", "reason"],
+        "properties": {
+          "content_id": {"type": "integer", "minimum": 1},
+          "position": {"type": "integer", "minimum": 0},
+          "author_id": {"type": "integer", "minimum": 1},
+          "category": {"type": "string"},
+          "tags": {"type": "array", "items": {"type": "string"}},
+          "title": {"type": "string"},
+          "published_at": {"type": "string", "format": "date-time"},
+          "score": {"type": ["number", "null"]},
+          "reason": {"enum": ["author", "interest", "similar", "trending", "explore", "recent", "fallback"]}
+        }
+      }
+    }
+  }
+}

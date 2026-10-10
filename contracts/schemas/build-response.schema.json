@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "build-response.schema.json",
+  "title": "Resposta de POST /internal/v1/feeds/{user_id}/build (Python → Rust)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["user_id", "version", "size", "generated_at_ms", "strategy", "profile_rebuilt", "timings_ms", "candidates", "filtered"],
+  "properties": {
+    "user_id": {"type": "integer", "minimum": 1},
+    "version": {"type": "integer", "minimum": 0},
+    "size": {"type": "integer", "minimum": 0},
+    "generated_at_ms": {"type": "integer", "minimum": 0},
+    "strategy": {"enum": ["personalized", "cold_start"]},
+    "profile_rebuilt": {"type": "boolean"},
+    "timings_ms": {"type": "object", "additionalProperties": {"type": "number", "minimum": 0}},
+    "candidates": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}},
+    "filtered": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}}
+  }
+}

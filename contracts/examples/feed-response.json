@@ -1,0 +1,4 @@
+{"user_id": 1, "source": "cache", "feed_version": 1760011200000, "stale": false, "next_cursor": "1760011200000:2", "items": [
+ {"content_id": 18231, "position": 0, "author_id": 77, "category": "games", "tags": ["indie", "rpg"], "title": "Guia definitivo de games #18231", "published_at": "2026-10-08T21:13:05Z", "score": 0.712345, "reason": "author"},
+ {"content_id": 1002, "position": 1, "author_id": 12, "category": "tecnologia", "tags": ["ia"], "title": "Teste rápido de tecnologia #1002", "published_at": "2026-10-07T09:00:00Z", "score": 0.66, "reason": "interest"}
+]}
