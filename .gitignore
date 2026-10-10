@@ -1,0 +1,8 @@
+.env
+**/target/
+**/.venv/
+**/__pycache__/
+.pytest_cache/
+.native-logs/
+tests/load/results/
+.DS_Store

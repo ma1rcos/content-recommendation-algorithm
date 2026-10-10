@@ -1,0 +1,9 @@
+**/target
+**/.venv
+**/__pycache__
+**/.pytest_cache
+.git
+.env
+.native-logs
+tests/load/results
+**/*.pyc
