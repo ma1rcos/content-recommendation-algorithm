@@ -1,0 +1,24 @@
+# Dependências descartáveis para os testes de integração (Redis/PostgreSQL em
+# portas locais altas, sem volume). Uso: make test-deps && make test
+name: recommendation-engine-test
+services:
+  postgres-test:
+    image: postgres:16.15-bookworm
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: reco_test
+    ports: ["127.0.0.1:55432:5432"]
+    tmpfs: [/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d reco_test"]
+      interval: 2s
+      retries: 30
+  redis-test:
+    image: redis:7.4.2-bookworm
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports: ["127.0.0.1:56379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      retries: 30
