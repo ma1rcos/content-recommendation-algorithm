@@ -1,0 +1,42 @@
+time="2026-10-09T23:58:48-03:00" level=info msg="aquecimento concluído; sem feed próprio: 0" source=console
+
+
+  █ THRESHOLDS 
+
+    http_req_duration{name:feed}
+    ✓ 'p(95)<25' p(95)=6.6ms
+
+    http_req_failed
+    ✓ 'rate<0.01' rate=0.00%
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 20001   999.446317/s
+    checks_succeeded...: 100.00% 20001 out of 20001
+    checks_failed......: 0.00%   0 out of 20001
+
+    ✓ status 200
+
+    CUSTOM
+    feed_source....................: 20001  999.446317/s
+
+    HTTP
+    http_req_duration..............: avg=2.46ms min=571.34µs med=1.76ms p(90)=4.47ms p(95)=6.6ms  p(99)=13.42ms max=30.15ms
+      { expected_response:true }...: avg=2.46ms min=571.34µs med=1.76ms p(90)=4.47ms p(95)=6.6ms  p(99)=13.42ms max=30.15ms
+      { name:feed }................: avg=2.46ms min=571.34µs med=1.76ms p(90)=4.47ms p(95)=6.6ms  p(99)=13.42ms max=30.15ms
+    http_req_failed................: 0.00%  0 out of 20002
+    http_reqs......................: 20002  999.496287/s
+
+    EXECUTION
+    iteration_duration.............: avg=2.63ms min=673.64µs med=1.92ms p(90)=4.67ms p(95)=6.85ms p(99)=13.81ms max=30.26ms
+    iterations.....................: 20001  999.446317/s
+    vus............................: 3      min=0          max=6  
+    vus_max........................: 100    min=100        max=100
+
+    NETWORK
+    data_received..................: 99 MB  5.0 MB/s
+    data_sent......................: 4.5 MB 223 kB/s
+
+
+

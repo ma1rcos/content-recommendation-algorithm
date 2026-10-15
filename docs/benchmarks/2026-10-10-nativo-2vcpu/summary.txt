@@ -1,0 +1,8 @@
+cenário      iterações    it/s descart.   p50 ms   p95 ms   p99 ms   erros  origem do feed
+warm             30001    1000        0     1.98     7.92    15.64   0.00%  {"built": 1000, "cache": 30001}
+hot_user         20001    1000        0     1.77     6.61    13.43   0.00%  {"cache": 20002}
+many_users        9001     300        0     2.63    48.71   240.51   0.00%  {"built": 451, "cache": 7445, "fallback_trending": 1105}
+events            6001     200        0     4.47    15.47    21.98   0.00%  {}
+ramp            147378    1228     3290    29.91   151.37   222.63   0.00%  {"cache": 127776, "cache_stale": 20602}
+cold               400     746        0    17.46    28.65   200.19   0.00%  {"built": 9, "fallback_trending": 391}
+engine_down        200     670        0    19.48    31.41   274.40   0.00%  {"built": 5, "fallback_trending": 195}

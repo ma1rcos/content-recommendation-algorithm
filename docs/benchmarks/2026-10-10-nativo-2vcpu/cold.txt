@@ -1,0 +1,39 @@
+
+
+  █ THRESHOLDS 
+
+    http_req_duration{name:feed}
+    ✓ 'p(95)<1000' p(95)=28.65ms
+
+    http_req_failed
+    ✓ 'rate<0.01' rate=0.00%
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 400     746.339214/s
+    checks_succeeded...: 100.00% 400 out of 400
+    checks_failed......: 0.00%   0 out of 400
+
+    ✓ status 200
+
+    CUSTOM
+    feed_source....................: 400    746.339214/s
+
+    HTTP
+    http_req_duration..............: avg=22.73ms min=4ms    med=17.46ms p(90)=25.24ms p(95)=28.65ms p(99)=200.19ms max=357.01ms
+      { expected_response:true }...: avg=22.73ms min=4ms    med=17.46ms p(90)=25.24ms p(95)=28.65ms p(99)=200.19ms max=357.01ms
+      { name:feed }................: avg=22.73ms min=4ms    med=17.46ms p(90)=25.24ms p(95)=28.65ms p(99)=200.19ms max=357.01ms
+    http_req_failed................: 0.00%  0 out of 400
+    http_reqs......................: 400    746.339214/s
+
+    EXECUTION
+    iteration_duration.............: avg=23.2ms  min=4.15ms med=17.84ms p(90)=25.7ms  p(95)=29.53ms p(99)=200.31ms max=358.73ms
+    iterations.....................: 400    746.339214/s
+
+    NETWORK
+    data_received..................: 1.9 MB 3.6 MB/s
+    data_sent......................: 92 kB  171 kB/s
+
+
+
