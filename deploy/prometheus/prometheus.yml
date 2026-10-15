@@ -1,0 +1,31 @@
+# Descoberta por DNS do Docker: cada nome de serviço resolve para TODAS as
+# réplicas (docker compose up --scale api=3), então todas são coletadas.
+global:
+  scrape_interval: 10s
+  evaluation_interval: 10s
+
+scrape_configs:
+  - job_name: api
+    dns_sd_configs:
+      - names: [api]
+        type: A
+        port: 8080
+        refresh_interval: 15s
+
+  - job_name: engine
+    dns_sd_configs:
+      - names: [engine]
+        type: A
+        port: 8000
+        refresh_interval: 15s
+
+  - job_name: worker
+    dns_sd_configs:
+      - names: [worker, worker-rebuild]
+        type: A
+        port: 9100
+        refresh_interval: 15s
+
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
