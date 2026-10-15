@@ -1,0 +1,257 @@
+# Stack completa de desenvolvimento/demonstração.
+#   cp .env.example .env && docker compose up -d --build && make seed
+# Portas publicadas (somente em 127.0.0.1): API 8080, Prometheus 9090, Grafana 3000.
+# Redis e PostgreSQL ficam apenas na rede interna.
+
+name: recommendation-engine
+
+x-python-env: &python-env
+  REDIS_URL: redis://:${REDIS_PASSWORD:?defina REDIS_PASSWORD no .env}@redis:6379/0
+  DATABASE_URL: postgresql://reco_app:${APP_DB_PASSWORD:?defina APP_DB_PASSWORD}@postgres:5432/${POSTGRES_DB:-reco}
+  INTERNAL_TOKEN: ${INTERNAL_TOKEN:?defina INTERNAL_TOKEN}
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  FEED_SIZE: ${FEED_SIZE:-300}
+  FEED_TTL_SECONDS: ${FEED_TTL_SECONDS:-3600}
+  REBUILD_DEDUP_SECONDS: ${REBUILD_DEDUP_SECONDS:-120}
+  RANKING_WEIGHTS: ${RANKING_WEIGHTS:-}
+  RANKING_WEIGHTS_FILE: ${RANKING_WEIGHTS_FILE:-}
+
+x-python-image: &python-image
+  build:
+    context: .
+    dockerfile: services/recommendation-engine-python/Dockerfile
+  image: recommendation-engine/engine:0.1.0
+
+x-logging: &logging
+  driver: json-file
+  options: {max-size: "10m", max-file: "3"}
+
+services:
+  postgres:
+    image: postgres:16.15-bookworm
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-reco}
+      POSTGRES_USER: ${POSTGRES_USER:-reco_owner}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?defina APP_DB_PASSWORD}
+    command: ["postgres", "-c", "shared_buffers=256MB", "-c", "max_connections=200",
+              "-c", "log_min_duration_statement=500"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./deploy/postgres/init:/docker-entrypoint-initdb.d:ro
+    networks: [backend]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+    stop_grace_period: 30s
+    deploy:
+      resources:
+        limits: {cpus: "2", memory: 1g}
+    logging: *logging
+
+  redis:
+    image: redis:7.4.2-bookworm
+    # AOF a cada segundo: eventos no stream sobrevivem a um reinício (perda máx. ~1 s).
+    # volatile-lru: sob pressão de memória, só chaves com TTL (feeds, perfis) são
+    # descartadas; catálogo e streams não têm TTL e são preservados.
+    # A senha vem do ambiente do container (não é expandida no arquivo do Compose).
+    command: ["sh", "-c", "exec redis-server --requirepass \"$$REDIS_PASSWORD\" --maxmemory \"$$REDIS_MAXMEMORY\"
+              --maxmemory-policy volatile-lru --appendonly yes --appendfsync everysec --save ''"]
+    volumes:
+      - redisdata:/data
+    networks: [backend]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_MAXMEMORY: ${REDIS_MAXMEMORY:-512mb}
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: {cpus: "1", memory: 768m}
+    logging: *logging
+
+  migrate:
+    <<: *python-image
+    command: ["python", "-m", "app.migrate"]
+    environment:
+      MIGRATIONS_DATABASE_URL: postgresql://${POSTGRES_USER:-reco_owner}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-reco}
+    depends_on:
+      postgres: {condition: service_healthy}
+    networks: [backend]
+    restart: "no"
+    logging: *logging
+
+  # Ferramenta (não sobe com `up`): docker compose run --rm seed --reset
+  seed:
+    <<: *python-image
+    entrypoint: ["python", "-m", "app.seed"]
+    command: ["--reset"]
+    profiles: ["tools"]
+    environment:
+      <<: *python-env
+      MIGRATIONS_DATABASE_URL: postgresql://${POSTGRES_USER:-reco_owner}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-reco}
+      SEED_USERS: ${SEED_USERS:-2000}
+      SEED_AUTHORS: ${SEED_AUTHORS:-300}
+      SEED_CONTENTS: ${SEED_CONTENTS:-20000}
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+    networks: [backend]
+
+  engine:
+    <<: *python-image
+    environment:
+      <<: *python-env
+      ENGINE_WORKERS: ${ENGINE_WORKERS:-2}
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+    networks: [backend]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+    stop_grace_period: 20s
+    deploy:
+      resources:
+        limits: {cpus: "2", memory: 1g}
+    logging: *logging
+
+  # Consome rec:events (idempotente) e faz a manutenção periódica (lock no Redis).
+  worker:
+    <<: *python-image
+    command: ["python", "-m", "workers.main", "--role", "events"]
+    environment: *python-env
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+    networks: [backend]
+    healthcheck: &worker-health
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9100/metrics', timeout=2)"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    stop_grace_period: 20s
+    deploy:
+      resources:
+        limits: {cpus: "1", memory: 512m}
+    logging: *logging
+
+  # Regenera feeds a partir de rec:jobs:rebuild (CPU-bound: processo separado).
+  worker-rebuild:
+    <<: *python-image
+    command: ["python", "-m", "workers.main", "--role", "rebuild"]
+    environment: *python-env
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+    networks: [backend]
+    healthcheck: *worker-health
+    restart: unless-stopped
+    stop_grace_period: 20s
+    deploy:
+      resources:
+        limits: {cpus: "1", memory: 512m}
+    logging: *logging
+
+  api:
+    build:
+      context: services/recommendation-api-rust
+    image: recommendation-engine/api:0.1.0
+    environment:
+      BIND_ADDR: 0.0.0.0:8080
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      DATABASE_URL: postgresql://reco_app:${APP_DB_PASSWORD}@postgres:5432/${POSTGRES_DB:-reco}
+      ENGINE_URL: http://engine:8000
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN}
+      AUTH_MODE: ${AUTH_MODE:-hmac}
+      AUTH_SECRET: ${AUTH_SECRET:?defina AUTH_SECRET (>= 32 caracteres)}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
+      ENGINE_TIMEOUT_MS: ${ENGINE_TIMEOUT_MS:-800}
+      ENGINE_MAX_CONCURRENCY: ${ENGINE_MAX_CONCURRENCY:-4}
+      FEED_SOFT_TTL_SECONDS: ${FEED_SOFT_TTL_SECONDS:-600}
+      REBUILD_DEDUP_SECONDS: ${REBUILD_DEDUP_SECONDS:-120}
+      HTTP_WORKERS: ${HTTP_WORKERS:-2}
+      LOG_LEVEL: ${API_LOG_LEVEL:-info}
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+    networks: [backend, frontend]
+    ports:
+      - "127.0.0.1:${API_PORT:-8080}:8080"
+    restart: unless-stopped
+    stop_grace_period: 25s
+    deploy:
+      resources:
+        limits: {cpus: "2", memory: 256m}
+    logging: *logging
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.retention.time=7d"]
+    volumes:
+      - ./deploy/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - promdata:/prometheus
+    networks: [backend, frontend]
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: {cpus: "1", memory: 512m}
+    logging: *logging
+
+  grafana:
+    image: grafana/grafana:11.6.0
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?defina GRAFANA_ADMIN_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+    volumes:
+      - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./deploy/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafanadata:/var/lib/grafana
+    depends_on: [prometheus]
+    networks: [frontend]
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT:-3000}:3000"
+    restart: unless-stopped
+    logging: *logging
+
+  # Gerador de carga (não sobe com `up`): docker compose run --rm k6 run ...
+  k6:
+    image: grafana/k6:1.3.0
+    profiles: ["tools"]
+    working_dir: /work
+    volumes:
+      - ./tests/load:/work/tests/load
+    environment:
+      API: http://api:8080
+      AUTH_SECRET: ${AUTH_SECRET}
+    networks: [frontend]
+
+networks:
+  # internal: sem saída para a internet e sem portas publicadas.
+  backend:
+    internal: true
+  frontend: {}
+
+volumes:
+  pgdata: {}
+  redisdata: {}
+  promdata: {}
+  grafanadata: {}
